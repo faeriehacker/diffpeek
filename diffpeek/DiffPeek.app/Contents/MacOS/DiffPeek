@@ -1,0 +1,54 @@
+#!/bin/bash
+# DiffPeek launcher. Compiles the Swift source on first run (or whenever the
+# source is newer than the binary), then hands off to the compiled app.
+
+# Script-based apps can get launched under Rosetta on Apple Silicon; the Command
+# Line Tools are arm64-only, so re-exec natively if we're being translated.
+if [ "$(uname -m)" = "x86_64" ] && [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" = "1" ]; then
+  exec arch -arm64 /bin/bash "$0" "$@"
+fi
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+RES="$HERE/../Resources"
+BIN="$HERE/DiffPeek-bin"
+SRC="$RES/DiffPeek.swift"
+LOG="$HOME/Library/Logs/DiffPeek-build.log"
+LAUNCHLOG="$HOME/Library/Logs/DiffPeek-launch.log"
+mkdir -p "$HOME/Library/Logs"
+log() { echo "$(date '+%F %T') launcher: $*" >> "$LAUNCHLOG"; }
+log "start arch=$(uname -m) translated=$(sysctl -n sysctl.proc_translated 2>/dev/null) user=$(id -un) bundle=$HERE"
+
+alert() {
+  # $1 title, $2 message
+  local msg
+  msg=$(printf '%s' "$2" | head -c 1500 | sed 's/\\/\\\\/g; s/"/\\"/g')
+  osascript -e "display alert \"$1\" message \"$msg\" as critical" >/dev/null 2>&1
+}
+
+if [ ! -x "$BIN" ] || [ "$SRC" -nt "$BIN" ]; then
+  if ! xcode-select -p >/dev/null 2>&1 || ! command -v swiftc >/dev/null 2>&1; then
+    alert "DiffPeek needs the Xcode Command Line Tools" \
+      "Open Terminal, run:  xcode-select --install   — then open DiffPeek again."
+    exit 1
+  fi
+  mkdir -p "$(dirname "$LOG")"
+  log "building (swiftc=$(command -v swiftc))"
+  if ! swiftc -O -framework Cocoa -framework WebKit -o "$BIN" "$SRC" >"$LOG" 2>&1; then
+    log "build FAILED"
+    alert "DiffPeek failed to build" "$(cat "$LOG")
+
+Full log: $LOG"
+    exit 1
+  fi
+  chmod +x "$BIN"
+  log "build ok"
+fi
+
+log "running binary $(file -b "$BIN" 2>/dev/null | head -c 80)"
+"$BIN" "$@"
+rc=$?
+log "binary exited rc=$rc"
+if [ $rc -ne 0 ]; then
+  alert "DiffPeek quit unexpectedly (exit code $rc)" "Details: $LAUNCHLOG"
+fi
+exit $rc
