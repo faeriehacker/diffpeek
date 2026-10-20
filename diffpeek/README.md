@@ -30,7 +30,7 @@ Right-click the menu bar icon for Show/Hide, Clear and Quit. The panel follows y
 Requirements: an Apple Silicon Mac running macOS 12 or later, and the Xcode Command Line Tools (`xcode-select --install` — already present if you use Homebrew or Git).
 
 ```bash
-git clone https://github.com/<your-account>/diffpeek.git
+git clone https://github.com/faeriehacker/diffpeek.git
 cp -R diffpeek/DiffPeek.app ~/Applications/
 open ~/Applications/DiffPeek.app
 ```
