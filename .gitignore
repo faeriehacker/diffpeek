@@ -1,0 +1,4 @@
+# Compiled on first launch; never commit it
+DiffPeek.app/Contents/MacOS/DiffPeek-bin
+
+.DS_Store
